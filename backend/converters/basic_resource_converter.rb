@@ -47,6 +47,10 @@ class BasicResourceConverter < Converter
                   extent_container_summary
                   extent_number
                   extent_type
+                  lang_materials
+                  script_materials
+                  finding_aid_language
+                  finding_aid_script
                   note_conditions_governing_access
                   note_immediate_source_of_acquisition
                   note_arrangement
@@ -80,10 +84,10 @@ class BasicResourceConverter < Converter
 
         values_map = Hash[@columns.zip(values)]
 
-        # skip header rows
+        # skip header rows, any title containing the string 'resources_basicinformation_title' will be skipped.
         next if values_map['title'].nil? ||
                 values_map['title'].strip == '' ||
-                values_map['title'] == 'resources_basicinformation_title' ||
+                values_map['title'] =~ /resources_basicinformation_title/ ||
                 values_map['title'] == 'Title'
 
         create_resource(values_map)
@@ -118,6 +122,9 @@ class BasicResourceConverter < Converter
     id_a = [row['resource_id']]
     id_a = id_a + Array.new(4 - id_a.length)
     identifier_json = JSON(id_a)
+    finding_aid_language = row['finding_aid_language']
+    finding_aid_script = row['finding_aid_script']
+    lang_materials = format_lang_material(row)
 
     uri = "/repositories/12345/resources/import_#{SecureRandom.hex}"
 
@@ -134,7 +141,9 @@ class BasicResourceConverter < Converter
                 :dates => [format_date(row['date_expression'], row['date_begin'], row['date_end'])].compact,
                 :rights_statements => [format_rights_statement(row)].compact,
                 :notes => [],
-                :language => 'eng',
+                :finding_aid_language => finding_aid_language,
+                :finding_aid_script => finding_aid_script,
+                :lang_materials => [lang_materials].compact
     }
 
     # Add all note fields
@@ -195,6 +204,15 @@ class BasicResourceConverter < Converter
       :expression => date_expression,
       :begin => convert_date_format(date_begin),
       :end => convert_date_format(date_end)
+    }
+  end
+
+  def format_lang_material(row)
+    {
+      :language_and_script => JSONModel::JSONModel(:language_and_script).from_hash({
+                                                                                     :language => row['lang_materials'],
+                                                                                     :script => row['script_materials']
+                                                                                   })
     }
   end
 

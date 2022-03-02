@@ -476,6 +476,9 @@ class ArrearageConverter < Converter
       super
 
       jsonmodel.language = 'eng'
+      jsonmodel.finding_aid_language = row['finding_aid_language']
+      jsonmodel.finding_aid_script = row['finding_aid_script']
+      jsonmodel.lang_materials = format_lang_material(row)
 
       if row['collection_id']
         jsonmodel['id_0'] = row['collection_id']
@@ -521,6 +524,15 @@ class ArrearageConverter < Converter
       else
         {'jsonmodel_type' => 'user_defined'}.merge(udf)
       end
+    end
+
+    def format_lang_material(row)
+      {
+        :language_and_script => JSONModel::JSONModel(:language_and_script).from_hash({
+                                                                                       :language => row['lang_materials'],
+                                                                                       :script => row['script_materials']
+                                                                                     })
+      }
     end
 
   end
