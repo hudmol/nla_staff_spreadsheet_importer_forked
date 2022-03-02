@@ -30,9 +30,28 @@ class DLCConverter < Converter
     @input_file = input_file
     @records = []
 
-    @columns = %w(level resource_id ud_int_2 container_type container_indicator component_id
-                  title date extent_number extent_type extent_container_summary extent_physical_details
-                  extent_dimensions scopecontent_note creator processinfo_note)
+    @columns = %w(
+                  level
+                  resource_id
+                  ud_int_2
+                  container_type
+                  container_indicator
+                  component_id
+                  title
+                  date
+                  extent_number
+                  extent_type
+                  extent_container_summary
+                  extent_physical_details
+                  extent_dimensions
+                  lang_materials
+                  script_materials
+                  finding_aid_language
+                  finding_aid_script
+                  scopecontent_note
+                  creator
+                  processinfo_note
+)
 
     @level_map = {
       'Collection' => 'collection',
@@ -111,6 +130,9 @@ class DLCConverter < Converter
     id_a = [row['resource_id']]
     id_a = id_a + Array.new(4 - id_a.length)
     identifier_json = JSON(id_a)
+    finding_aid_language = row['finding_aid_language']
+    finding_aid_script = row['finding_aid_script']
+    lang_materials = format_lang_material(row)
 
     if (resource = Resource[:identifier => identifier_json])
       resource.uri
@@ -132,7 +154,9 @@ class DLCConverter < Converter
                     :dates => [date].compact,
                     :linked_agents => [format_agent(row)].compact,
                     :user_defined => format_user_defined(row),
-                    :language => 'eng',
+                    :finding_aid_language => finding_aid_language,
+                    :finding_aid_script => finding_aid_script,
+                    :lang_materials => [lang_materials].compact
                   })
 
       uri
@@ -253,6 +277,14 @@ class DLCConverter < Converter
     @records << JSONModel::JSONModel(:archival_object).from_hash(item_hash)
   end
 
+  def format_lang_material(row)
+    {
+      :language_and_script => JSONModel::JSONModel(:language_and_script).from_hash({
+                                                                                     :language => row['lang_materials'],
+                                                                                     :script => row['script_materials']
+                                                                                   })
+    }
+  end
 
   def format_level(level_string)
     @level_map[level_string]

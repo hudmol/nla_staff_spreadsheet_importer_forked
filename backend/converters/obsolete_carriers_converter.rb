@@ -49,6 +49,10 @@ class ObsoleteCarriersConverter < Converter
                   extent_physical_details
                   extent_dimensions
                   subject_genre
+                  lang_materials
+                  script_materials
+                  finding_aid_language
+                  finding_aid_script
                  )
 
     @level_map = {
@@ -129,21 +133,26 @@ class ObsoleteCarriersConverter < Converter
 
         uri = "/repositories/12345/resources/import_#{SecureRandom.hex}"
         title = row['title']
+        finding_aid_language = row['finding_aid_language']
+        finding_aid_script = row['finding_aid_script']
+        lang_materials = format_lang_material(row)
 
         date = format_date(row['date_expression'])
 
         @records << JSONModel::JSONModel(:resource).from_hash({
-                    :uri => uri,
-                    :id_0 => id_a[0],
-                    :id_1 => id_a[1],
-                    :id_2 => id_a[2],
-                    :id_3 => id_a[3],
-                    :title => title,
-                    :level => 'collection',
-                    :extents => [format_extent(row, :portion => 'whole')].compact,
-                    :dates => [date].compact,
-                    :language => 'eng',
-                  })
+                                                                :uri => uri,
+                                                                :id_0 => id_a[0],
+                                                                :id_1 => id_a[1],
+                                                                :id_2 => id_a[2],
+                                                                :id_3 => id_a[3],
+                                                                :title => title,
+                                                                :level => 'collection',
+                                                                :extents => [format_extent(row, :portion => 'whole')].compact,
+                                                                :dates => [date].compact,
+                                                                :finding_aid_language => finding_aid_language,
+                                                                :finding_aid_script => finding_aid_script,
+                                                                :lang_materials => [lang_materials].compact
+                                                              })
 
         @resource_uris[row['resource_id']] = uri
         uri
@@ -179,6 +188,15 @@ class ObsoleteCarriersConverter < Converter
     @records << JSONModel::JSONModel(:archival_object).from_hash(item_hash)
   end
 
+  def format_lang_material(row)
+    {
+      :language_and_script => JSONModel::JSONModel(:language_and_script).from_hash({
+                                                                                     :language => row['lang_materials'],
+                                                                                     :script => row['script_materials']
+                                                                                   })
+    }
+
+  end
 
   def format_level(level_string)
     @level_map[level_string]
@@ -252,14 +270,14 @@ class ObsoleteCarriersConverter < Converter
     return @subject_uris[term] if @subject_uris.has_key?(term)
 
     subject_json = JSONModel::JSONModel(:subject).from_hash({
-      :source => 'local',
-      :vocabulary => '/vocabularies/1',
-      :terms => [{
-                   :vocabulary => '/vocabularies/1',
-                   :term_type => 'genre_form',
-                   :term => term
-      }]
-    })
+                                                              :source => 'local',
+                                                              :vocabulary => '/vocabularies/1',
+                                                              :terms => [{
+                                                                           :vocabulary => '/vocabularies/1',
+                                                                           :term_type => 'genre_form',
+                                                                           :term => term
+                                                                         }]
+                                                            })
 
     subject = Subject.find_matching(subject_json)
 
@@ -305,7 +323,7 @@ class ObsoleteCarriersConverter < Converter
   def format_record(row)
 
     raise "No subject provided for '#{row['title']}' (#{row['component_id']})" unless row['subject_genre']
-    
+
     uri = "/repositories/12345/archival_objects/import_#{SecureRandom.hex}"
 
     record_hash = {

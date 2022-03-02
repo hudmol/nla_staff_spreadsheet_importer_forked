@@ -113,6 +113,7 @@ class DonationConverter < Converter
     else
       uri = "/repositories/12345/resources/import_#{SecureRandom.hex}"
       title = title_values[3]
+      lang_materials = format_lang_material(office_use_values)
 
       extent = {
         :portion => 'whole',
@@ -131,7 +132,9 @@ class DonationConverter < Converter
                     :level => 'collection',
                     :extents => [extent],
                     :dates => [date].compact,
-                    :language => 'eng',
+                    :finding_aid_language => office_use_values[9],
+                    :finding_aid_script => office_use_values[10],
+                    :lang_materials => [lang_materials].compact
                   })
 
       uri
@@ -279,6 +282,15 @@ class DonationConverter < Converter
         }
       }
     end
+  end
+
+  def format_lang_material(office_use_values)
+    {
+      :language_and_script => JSONModel::JSONModel(:language_and_script).from_hash({
+                                                                                     :language => office_use_values[7],
+                                                                                     :script => office_use_values[8]
+                                                                                   })
+    }
   end
 
 
