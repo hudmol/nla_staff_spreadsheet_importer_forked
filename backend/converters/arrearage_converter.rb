@@ -475,10 +475,9 @@ class ArrearageConverter < Converter
     def initialize(row, jsonmodel, context)
       super
 
-      jsonmodel.language = 'eng'
       jsonmodel.finding_aid_language = row['finding_aid_language']
       jsonmodel.finding_aid_script = row['finding_aid_script']
-      jsonmodel.lang_materials = format_lang_material(row)
+      jsonmodel.lang_materials = [format_lang_material(row)]
 
       if row['collection_id']
         jsonmodel['id_0'] = row['collection_id']

@@ -1,7 +1,7 @@
 NLA Staff Spreadsheet Importer Plugin
 =====================================
 
-An ArchivesSpace (v2.1.x) plugin developed for the National Library of Australia.
+An ArchivesSpace (v3.x) plugin developed for the National Library of Australia.
 
 It was originally written and maintained by Hudson Molonglo (https://github.com/hudmol/nla_staff_spreadsheet_importer).
 
@@ -119,18 +119,6 @@ Next, add the plugin to your ArchivesSpace `config/config.rb` file:
      # the list
      AppConfig[:plugins] = ['local', 'nla_staff_spreadsheet_importer']
 
-This plugin needs additional libraries to parse Excel files, so
-there's one final step.  From your ArchivesSpace directory, run the
-`initialize-plugin` script to install the plugin's dependencies like
-this:
-
-     cd /path/to/your/archivesspace
-     scripts/initialize-plugin.sh nla_staff_spreadsheet_importer
-
-This will take a minute or two, but you should see it install the
-`rubyXL` library.
-
-
 ### From the development version
 
 As above, but instead of downloading and unpacking zip files, just
@@ -143,7 +131,8 @@ directory like this:
 
 ## Configuring it
 
-The Obsolete Carriers CSV importer requires a configuration setting. This will be checked at start up.
+The Obsolete Carriers CSV importer requires a configuration setting. This will be checked at start up. Add this line of
+config to the [archivesspace_local](https://github.com/nla/archivesspace_local) repo.
 
      AppConfig[:obsolete_carriers_authorizer_agent_uri] = '/agents/corporate_entities/3'
 
