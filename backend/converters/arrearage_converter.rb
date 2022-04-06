@@ -56,6 +56,8 @@ class ArrearageConverter < Converter
     context = {
       :collection_handler => CollectionHandler.new,
       :parent_handler => ParentHandler.new,
+      :top_container_handler => TopContainerHandler.new,
+      :location_handler => LocationHandler.new,
       :position => 0,
     }
 
@@ -140,40 +142,46 @@ class ArrearageConverter < Converter
 
   class LocationHandler
 
-    def self.get_or_create(location)
-      aspace_location = {:building => "NLA",
-                         :room => location[:room],
-                         :coordinate_1_label => "Row",
-                         :coordinate_1_indicator => location[:row],
-                         :coordinate_2_label => "Unit",
-                         :coordinate_2_indicator => location[:unit],
-                         :coordinate_3_label => "Shelf/Drawer",
-                         :coordinate_3_indicator => location[:shelf]}
-
-      if (location = Location[aspace_location])
-        location.uri
-      else
-        Location.create_from_json(JSONModel::JSONModel(:location).from_hash(aspace_location)).uri
-      end
+    def initialize
+      @locations = {}
     end
 
+    def get_or_create(location_hash)
+      loc_key = location_hash
+
+      return @locations[loc_key] if @locations.has_key?(loc_key)
+
+      aspace_location = {:building => "NLA",
+                         :room => location_hash[:room],
+                         :coordinate_1_label => "Row",
+                         :coordinate_1_indicator => location_hash[:row],
+                         :coordinate_2_label => "Unit",
+                         :coordinate_2_indicator => location_hash[:unit],
+                         :coordinate_3_label => "Shelf/Drawer",
+                         :coordinate_3_indicator => location_hash[:shelf]}
+
+      location = Location[aspace_location] || Location.create_from_json(JSONModel::JSONModel(:location).from_hash(aspace_location))
+
+      @locations[loc_key] = location.uri
+    end
   end
 
 
   class TopContainerHandler
 
-    # sorry
+    def initialize
+      @top_containers = {}
+    end
 
-    @@top_containers = {}
 
-    def self.key_for(top_container)
+    def key_for(top_container)
       key = "#{top_container[:type]}: #{top_container[:indicator]}"
       key += " #{top_container[:barcode]}" if top_container.has_key?(:barcode)
       key
     end
 
 
-    def self.build(top_container)
+    def build(top_container)
       {
         :type => top_container.fetch(:type, 'Box'),
         :indicator => top_container.fetch(:indicator, 'Unknown'),
@@ -182,14 +190,14 @@ class ArrearageConverter < Converter
     end
 
 
-    def self.uri_or_false(top_container)
-      tc = @@top_containers.fetch(key_for(build(top_container)), false)
+    def uri_or_false(top_container)
+      tc = @top_containers.fetch(key_for(build(top_container)), false)
       return false unless tc
       tc[:uri]
     end
 
 
-    def self.get_or_create(top_container)
+    def get_or_create(top_container)
       tc = build(top_container)
 
       unless top_container[:indicator]
@@ -199,7 +207,11 @@ class ArrearageConverter < Converter
 
       tc_key = key_for(tc)
 
-      if existing_tc = @@top_containers.fetch(tc_key, false)
+      if existing_tc = @top_containers.fetch(tc_key, false)
+
+        require 'pp'
+        pp existing_tc
+        pp tc
 
         if existing_tc[:container_locations].first['ref'] != tc[:container_locations].first['ref']
           raise "Found two containers with the same type and indicator (#{tc_key}) but different locations. " +
@@ -210,7 +222,7 @@ class ArrearageConverter < Converter
 
       else
         tc[:uri] = TopContainer.create_from_json(JSONModel::JSONModel(:top_container).from_hash(tc)).uri
-        @@top_containers[tc_key] = tc
+        @top_containers[tc_key] = tc
         tc[:uri]
       end
     end
@@ -354,10 +366,10 @@ class ArrearageConverter < Converter
       if row['location_room']
         locations << {
           'start_date' => Date.today.strftime('%Y-%m-%d'),
-          'ref' => ::ArrearageConverter::LocationHandler.get_or_create(:room => row['location_room'],
-                                                                       :row => row['location_row'],
-                                                                       :unit => row['location_unit'],
-                                                                       :shelf => row['location_shelf']),
+          'ref' => @context.fetch(:location_handler).get_or_create(:room => row['location_room'],
+                                                                   :row => row['location_row'],
+                                                                   :unit => row['location_unit'],
+                                                                   :shelf => row['location_shelf']),
           'status' => 'current'
         }
       else
@@ -365,8 +377,8 @@ class ArrearageConverter < Converter
         if row['indicator_1']
           # no location info, but we have an indicator
           # so let's see if we've seen this container before ...
-          unless (tc_uri = ::ArrearageConverter::TopContainerHandler.uri_or_false(:indicator => row['indicator_1'],
-                                                                                  :type => row['type_1']))
+          unless (tc_uri = @context.fetch(:top_container_handler).uri_or_false(:indicator => row['indicator_1'],
+                                                                               :type => row['type_1']))
             # no location info and we haven't seen this indicator before, so blow up ...
             raise "Row (#{row['title']}) has no location for container indicator: #{row['indicator_1']}. " +
                   "Please fix this and rerun. Aborting import ..."
@@ -380,9 +392,9 @@ class ArrearageConverter < Converter
       end
 
       top_container = tc_uri ||
-        ::ArrearageConverter::TopContainerHandler.get_or_create(:indicator => row['indicator_1'],
-                                                                :type => row['type_1'],
-                                                                :container_locations => locations)
+        @context.fetch(:top_container_handler).get_or_create(:indicator => row['indicator_1'],
+                                                             :type => row['type_1'],
+                                                             :container_locations => locations)
 
       sub_container = {
         'top_container' => {'ref' => top_container}
@@ -597,7 +609,7 @@ class ArrearageConverter < Converter
       import_uri = "/repositories/12345/archival_objects/import_#{SecureRandom.hex}"
       jsonmodel['uri'] = import_uri
       jsonmodel['position'] = (context[:position] += 1)
-
+      jsonmodel['publish'] = false
 
       component_id = [row['component_id'], row['item_id']].compact.join("")
 
