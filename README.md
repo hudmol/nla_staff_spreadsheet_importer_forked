@@ -12,6 +12,7 @@ It adds the following Import Types to the Import Data Job Type.
   * Arrearage spreadsheet
   * Donor Box List spreadsheet
   * Digital Library Collections CSV
+  * Generic DLC CSV
   * Basic Resource CSV
   * Obsolete Carriers CSV
 
@@ -77,6 +78,18 @@ and top container records.
 A sample CSV file is included here:
 
      https://github.com/nla/nla_staff_spreadsheet_importer/blob/master/samples/dlc.csv
+
+
+Generic DLC CSV
+---------------
+
+Takes a generic export CSV from the Digital Library Collections system. It
+creates a single resource record with a number of items below it, each of which
+creates and links to a single digital object. It also creates agents as required.
+
+A sample CSV file is included here:
+
+     https://github.com/nla/nla_staff_spreadsheet_importer/blob/master/samples/generic_dlc.csv
 
 
 Basic Resource CSV
